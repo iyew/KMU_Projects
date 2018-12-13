@@ -1,0 +1,194 @@
+// goil Tool을 사용하여 oil파일 컴파일 필요
+// usage: goil --target=posix  --templates=../../../goil/templates/ car_simulation.oil
+
+/*
+** OIL 버전 설정
+** 2.5: OSEK/VDX Application
+** 3.1: AUTOSAR 3.1 Application
+** 4.0: AUTOSAR 4.0 Application
+*/
+OIL_VERSION = "2.5";
+
+/*
+** IMPLEMENTATION 파트: application 속성 지정
+** 주로 TASK나 ISR의 스택 사이즈 정적으로 결정
+*/
+IMPLEMENTATION trampoline {
+
+    /* This fix the default STACKSIZE of tasks */
+    TASK {
+        UINT32 STACKSIZE = 32768 ;
+    } ;
+
+    /* This fix the default STACKSIZE of ISRs */
+    ISR {
+        UINT32 STACKSIZE = 32768 ;
+    } ;
+};
+
+/*
+** CPU 파트: application의 각각의 객체에 대한 속성 지정
+** OS의 속성, TASK, ISR, RESOURCE,
+** ALARM, COUNTER, APPMODE, EVENT, MESSAGE 속성 정적으로 지정 필요
+*/
+CPU car_simulation {
+  OS config {
+    /*
+    ** 확장 상태 사용(Default: STANDARD), 상태에 따른 오류 검사 반환값 다름
+    ** 작업이 표준 상태에서 활성화되었을 시, "E_OK" 혹은 "Too many Task activations" 에러 반환 가능
+    ** 작업이 확장 상태에서 활성화되었을 시, "invalid Task" 혹은 작업이 "Task still occupies Resources" 에러 반환 가능
+    ** 확장 상태에서는 OSEK application에서 에러 반환하지 않음
+    */
+    STATUS = EXTENDED;
+    BUILD = TRUE {
+      APP_SRC = "car_simulation.c";         // application SOURCE
+      TRAMPOLINE_BASE_PATH = "../../..";    // trampoline base 경로
+      APP_NAME = "car_simulation_exe";      // 컴파일 시 생성되는 실행가능 파일
+      LINKER = "gcc";
+      SYSTEM = PYTHON;
+    };
+  };
+  
+  APPMODE stdAppmode {};                    // 적어도 하나의 어플리케이션 모드가 CPU 파트 내에 정의되어 있어야됨
+  
+  ALARM alarm_end_car {
+    COUNTER = SystemCounter;                          // Trampoline default counter
+    ACTION = ACTIVATETASK { TASK = task_end_car; };   // Alarm 타이머 만료될 때의 동작과 내용 정의, 만료시 task_end_car 수행
+    AUTOSTART = TRUE {                                // Alarm 자동시작 여부
+      APPMODE = stdAppmode;                           // 어플리케이션 모드 지정
+      ALARMTIME = 100;                                // 처음 알람 만료시간 지정
+      CYCLETIME = 0;                                  // 처음 알람 만료후 순환 주기, 0이면 한번만 알람 만료됨
+    };                               
+  };
+
+  TASK task_start_car {
+    PRIORITY = 2;                                     // Task 우선순위, 숫자가 높을수록 높은 우선순위
+    AUTOSTART = TRUE {                                // Task 자동시작 여부
+      APPMODE = stdAppmode;                           // Task가 실행될 어플리케이션 모드 지정
+    };       
+    ACTIVATION = 1;                                   // 동시에 실행될 수 있는 Task 개수
+    SCHEDULE = FULL;                                  // 스케쥴링 모드 - FULL: preemptive, NON: non-preemptive
+  };
+
+  TASK task_check_module {
+    PRIORITY = 2;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    RESOURCE = module_initialize;
+  };
+
+  TASK task_check_fuel {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_check_engine {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_check_airbag {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_driving {
+    PRIORITY = 2;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_change_transmission {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+  
+  TASK task_handling {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_accel {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_break {
+    PRIORITY = 3;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_change_gear_level {
+    PRIORITY = 4;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  TASK task_end_car {
+    PRIORITY = 2;
+    AUTOSTART = FALSE;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+  };
+
+  ISR isr_airbag {    // 인터럽트 서비스 루틴(Interrupt Service Routine) 정의
+    /*
+    ** ISR 카테고리 지정
+    ** category 1: OS 시스템 서비스를 사용할 수 없음
+    **             사용자가 인터럽트 전후처리를 직접 해줘야하며 약간의 오버헤드 발생
+    ** category 2: OSEK OS 시스템에서 ISR frame 제공 및 전용 ISR API 사용 가능
+    */
+    CATEGORY = 2;
+    PRIORITY = 10;    // ISR 우선순위, 숫자가 높을수록 높은 우선순위
+    /*
+    ** 인터럽트 발생 트리거 지정
+    ** 실행환경이 리눅스 기반이므로, POSIX keyboard interrupt signal 지정
+    ** 지정한 인터럽트 발생시 ISR 호출됨
+    **************************************************************************
+    ** POSIX 환경에서 사용가능 signal
+    **
+    ** SIGPIPE: 신호를 읽는 사용자가 없는 상태에서 파이프에 기록
+    ** SIGQUIT: Ctrl+\(backslash), 프로세스를 종료시킨 뒤 코어 덤프
+    ** SIGTERM: 종료 신호
+    ** SIGTRAP: 트레이스/브레이크포인트 트랩
+    ** SIGUSR2: 사용자 정의 신호 2.
+    */
+    SOURCE = SIGQUIT;
+    RESOURCE = res_airbag; 
+  };
+ 
+  RESOURCE module_initialize {    // Resource 정의
+    /*
+    ** Resource 특성 지정
+    ** STANDARD:  Resource 관련 API 사용 가능
+    ** INTERNAL:  Resource 관련 API 사용 불가, Task가 Running 상태에 진입할 때마다
+    **            OSEK Priority Ceiling Protocol에 의해 자동으로 internal resource 획득
+    */
+    RESOURCEPROPERTY = STANDARD;
+  };
+
+  RESOURCE res_speed {
+    RESOURCEPROPERTY = STANDARD;  // enable get&release resource
+  }; 
+
+  RESOURCE res_airbag {
+    RESOURCEPROPERTY = INTERNAL;  // disable get&release resource
+  };
+};

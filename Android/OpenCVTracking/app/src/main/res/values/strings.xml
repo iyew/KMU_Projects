@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">OpenCVTracking</string>
+    <string name="button_reset">Reset</string>
+    <string name="label_count">Count</string>
+    <string name="initialize_count">0</string>
+    <string name="button_start">Start</string>
+    <string name="button_stop">Stop</string>
+</resources>

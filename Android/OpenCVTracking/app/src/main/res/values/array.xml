@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="line_array">
+        <item>Line 1</item>
+        <item>Line 2</item>
+        <item>Line 3</item>
+        <item>Line 4</item>
+        <item>Line 5</item>
+        <item>Line 6</item>
+        <item>Line 7</item>
+        <item>Line 8</item>
+        <item>Line 9</item>
+        <item>Line 10</item>
+    </string-array>
+</resources>
