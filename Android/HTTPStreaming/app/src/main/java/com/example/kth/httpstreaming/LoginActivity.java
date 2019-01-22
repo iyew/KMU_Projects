@@ -31,13 +31,15 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +73,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
-    private String result;
 
     private Intent mainIntent;
 
@@ -205,7 +206,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private boolean isEmailValid(String email) {
         //TODO: Replace this with your own logic
-        // return email.contains("@");
+        //return email.contains("@");
         return true;
     }
 
@@ -310,7 +311,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      * the user.
      */
     // http://itmir.tistory.com/624
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+    // http://webnautes.tistory.com/829
+    // http://yoo-hyeok.tistory.com/19?category=708422
+
+    public class UserLoginTask extends AsyncTask<Void, Void, String> {
 
         private final String mEmail;
         private final String mPassword;
@@ -321,46 +325,36 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
 
         @Override
-        protected Boolean doInBackground(Void... params) {
+        protected String doInBackground(Void... params) {
             // TODO: attempt authentication against a network service.
 
             try {
                 // Simulate network access.
                 // Thread.sleep(2000);
-                URL url = new URL("http://210.125.31.130:80");
+                URL url = new URL("http://119.67.84.66/login.php");
                 HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 
-                conn.setConnectTimeout(10000);
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-                conn.setRequestMethod("GET");
+                conn.setReadTimeout(5000);
+                conn.setConnectTimeout(5000);
+                conn.connect();
 
-                InputStream is = conn.getInputStream();
+                StringBuilder sb = new StringBuilder();
+                BufferedReader bufferedReader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream()));
 
-                StringBuilder builder = new StringBuilder();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-                String line;
-
-                while((line = reader.readLine()) != null) {
-                    builder.append(line + "\n");
+                String json;
+                while((json = bufferedReader.readLine()) != null) {
+                    sb.append(json + "\n");
                 }
 
-                result = builder.toString();
-
-                int resCode = conn.getResponseCode();
-                if(resCode == HttpURLConnection.HTTP_OK) {
-                    Toast.makeText(getApplicationContext(),
-                            "HTTP Connection Success", Toast.LENGTH_LONG).show();
-                }
-
+                bufferedReader.close();
+                return sb.toString().trim();
             } catch (MalformedURLException e) {
-                e.printStackTrace();
-                return false;
+                return null;
             } catch (IOException io) {
-                io.printStackTrace();
-                return false;
+                return null;
             }
-
+/*
             for (String credential : DUMMY_CREDENTIALS) {
                 String[] pieces = credential.split(":");
                 if (pieces[0].equals(mEmail)) {
@@ -368,24 +362,46 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     return pieces[1].equals(mPassword);
                 }
             }
-
+*/
             // TODO: register the new account here.
-            return true;
         }
 
         @Override
-        protected void onPostExecute(final Boolean success) {
+        protected void onPostExecute(String result) {
             mAuthTask = null;
             showProgress(false);
 
+            boolean success = false;
+
+            if(result != null) {
+                try {
+                    JSONObject jsonObj = new JSONObject(result);
+                    JSONArray user = jsonObj.getJSONArray("account");
+
+                    for(int i=0; i<user.length(); i++) {
+                        JSONObject c = user.getJSONObject(i);
+                        String id = c.getString("ID");
+                        String password = c.getString("Password");
+
+                        if(mEmail.equals(id) && mPassword.equals(password)) {
+                            success = true;
+                        }
+                    }
+                } catch(JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
             if (success) {
-                System.out.println(result);
                 mainIntent = new Intent(getApplicationContext(), MainActivity.class);
+                mainIntent.putExtra("USER_ID", mEmail);
                 startActivity(mainIntent);
+                Toast.makeText(getApplicationContext(), "Login Success", Toast.LENGTH_SHORT).show();
                 finish();
             } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
+                Toast.makeText(getApplicationContext(), "Login Failed", Toast.LENGTH_SHORT).show();
+                // mPasswordView.setError(getString(R.string.error_incorrect_password));
+                // mPasswordView.requestFocus();
             }
         }
 
