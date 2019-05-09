@@ -331,7 +331,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             try {
                 // Simulate network access.
                 // Thread.sleep(2000);
-                URL url = new URL("http://119.67.84.66/login.php");
+                URL url = new URL("http://192.168.219.105:8001/login.php");
                 HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 
                 conn.setReadTimeout(5000);

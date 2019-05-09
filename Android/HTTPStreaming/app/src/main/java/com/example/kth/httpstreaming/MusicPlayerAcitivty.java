@@ -109,7 +109,7 @@ public class MusicPlayerAcitivty extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         String mp3 = intent.getStringExtra("MUSIC_TITLE");
-        String url = "http://119.67.84.66/music/" + mp3 + ".mp3";
+        String url = "http://192.168.219.105:8001/music/" + mp3 + ".mp3";
         playerAdapter.loadMedia(url);
     }
 
@@ -157,7 +157,7 @@ public class MusicPlayerAcitivty extends AppCompatActivity {
         @Override
         protected Boolean doInBackground(Void... params) {
             try {
-                URL url = new URL("http://119.67.84.66/image/" + imageName + ".jpg");
+                URL url = new URL("http://192.168.219.105:8001/image/" + imageName + ".jpg");
                 bitmapCover = BitmapFactory.decodeStream(url.openConnection().getInputStream());
             } catch (Exception e) {
                 e.printStackTrace();

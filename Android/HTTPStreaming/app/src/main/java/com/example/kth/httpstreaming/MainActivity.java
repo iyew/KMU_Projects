@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         userID = intent.getStringExtra("USER_ID");
 
         MusicListTask musicListTask = new MusicListTask();
-        musicListTask.execute("http://119.67.84.66/music_list.php");
+        musicListTask.execute("http://192.168.219.105:8001/music_list.php");
 
         musicListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
